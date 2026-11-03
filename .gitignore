@@ -1,0 +1,9 @@
+# archivos temporales de Office y Windows
+~$*
+*.tmp
+Thumbs.db
+desktop.ini
+
+# copias de seguridad de draw.io
+.$*
+*.bkp
