@@ -68,3 +68,16 @@ FROM asiste
 JOIN persona ON persona.id_persona = asiste.id_alumno
 GROUP BY persona.id_persona
 ORDER BY porcentaje_asistencia;
+
+-- 6.Alumnos en riesgo de desaprobar
+--
+-- Aca salen los que tienen menos de 6 de nota final, el que esta peor sale primero.
+-- Si le falta un parcial no sale, porque todavia no tiene nota final.
+--
+SELECT persona.apellido, persona.nombre, materia.nombre AS materia, materia.anio_plan,
+       ROUND((calificacion.parcial_1 + calificacion.parcial_2) / 2, 2) AS nota_final
+FROM calificacion
+JOIN persona ON persona.id_persona = calificacion.id_alumno
+JOIN materia ON materia.id_materia = calificacion.id_materia
+WHERE (calificacion.parcial_1 + calificacion.parcial_2) / 2 < 6
+ORDER BY nota_final;
