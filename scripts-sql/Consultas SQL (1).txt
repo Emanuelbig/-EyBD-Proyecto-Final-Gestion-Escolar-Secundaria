@@ -1,0 +1,150 @@
+USE gestion_escolar;
+
+-- 1. Listado de alumnos de un curso específico (Ej: id_curso = 1)
+SELECT 
+    c.anio, c.division, c.turno, p.dni, p.apellido, p.nombre, p.email
+FROM PERTENECE pe
+JOIN ALUMNO a ON pe.id_alumno = a.id_persona
+JOIN PERSONA p ON a.id_persona = p.id_persona
+JOIN CURSO c ON pe.id_curso = c.id_curso
+WHERE c.id_curso = 1
+ORDER BY p.apellido, p.nombre;
+
+-- 2. Listado de materias y el profesor que las dicta
+SELECT 
+    m.id_materia, m.nombre AS materia, m.anio_plan,
+    CONCAT(p.apellido, ', ', p.nombre) AS profesor,
+    p.email AS email_profesor
+FROM MATERIA m
+JOIN PROFESOR pr ON m.id_profesor = pr.id_persona
+JOIN PERSONA p ON pr.id_persona = p.id_persona
+ORDER BY m.nombre;
+
+-- 3. Calcular la nota final de cada alumno por materia
+SELECT 
+    CONCAT(p.apellido, ', ', p.nombre) AS alumno,
+    mat.nombre AS materia,
+    cal.parcial_1, cal.parcial_2,
+    ROUND((IFNULL(cal.parcial_1, 0) + IFNULL(cal.parcial_2, 0)) / 2, 2) AS nota_final
+FROM CALIFICACION cal
+JOIN ALUMNO a ON cal.id_alumno = a.id_persona
+JOIN PERSONA p ON a.id_persona = p.id_persona
+JOIN MATERIA mat ON cal.id_materia = mat.id_materia;
+
+-- 4. Consultar alumnos en riesgo de desaprobar (Nota < 6)
+SELECT 
+    CONCAT(p.apellido, ', ', p.nombre) AS alumno,
+    mat.nombre AS materia,
+    ROUND((IFNULL(cal.parcial_1, 0) + IFNULL(cal.parcial_2, 0)) / 2, 2) AS nota_final
+FROM CALIFICACION cal
+JOIN ALUMNO a ON cal.id_alumno = a.id_persona
+JOIN PERSONA p ON a.id_persona = p.id_persona
+JOIN MATERIA mat ON cal.id_materia = mat.id_materia
+WHERE (IFNULL(cal.parcial_1, 0) + IFNULL(cal.parcial_2, 0)) / 2 < 6;
+
+-- 5. Porcentaje de asistencia de cada alumno por materia
+SELECT 
+    CONCAT(p.apellido, ', ', p.nombre) AS alumno,
+    mat.nombre AS materia,
+    COUNT(asi.id_asistencia) AS total_clases,
+    SUM(CASE WHEN asi.presente = 1 THEN 1 ELSE 0 END) AS total_presentes,
+    CONCAT(ROUND(SUM(CASE WHEN asi.presente = 1 THEN 1 ELSE 0 END) * 100 / COUNT(asi.id_asistencia), 2), '%') AS porcentaje_asistencia
+FROM ASISTE asi
+JOIN ALUMNO a ON asi.id_alumno = a.id_persona
+JOIN PERSONA p ON a.id_persona = p.id_persona
+JOIN MATERIA mat ON asi.id_materia = mat.id_materia
+GROUP BY a.id_persona, mat.id_materia;
+
+-- 6. Alumnos que cursan una materia específica (Ej: id_materia = 1)
+SELECT 
+    mat.nombre AS materia, c.anio, c.division,
+    CONCAT(p.apellido, ', ', p.nombre) AS alumno, p.dni
+FROM CONTIENE con
+JOIN CURSO c ON con.id_curso = c.id_curso
+JOIN PERTENECE pe ON c.id_curso = pe.id_curso
+JOIN ALUMNO a ON pe.id_alumno = a.id_persona
+JOIN PERSONA p ON a.id_persona = p.id_persona
+JOIN MATERIA mat ON con.id_materia = mat.id_materia
+WHERE mat.id_materia = 1
+ORDER BY p.apellido, p.nombre;
+
+-- 7. Materias dictadas por un profesor específico (Ej: id_profesor = 1)
+SELECT 
+    CONCAT(per.apellido, ', ', per.nombre) AS profesor,
+    m.id_materia, m.nombre AS materia, m.anio_plan
+FROM MATERIA m
+JOIN PROFESOR pr ON m.id_profesor = pr.id_persona
+JOIN PERSONA per ON pr.id_persona = per.id_persona
+WHERE pr.id_persona = 1
+ORDER BY m.nombre;
+
+-- 8. Cursos y materias asociadas a un alumno específico (Ej: id_alumno = 5)
+SELECT 
+    CONCAT(p.apellido, ', ', p.nombre) AS alumno,
+    c.ciclo_lectivo, c.anio, c.division, mat.nombre AS materia
+FROM PERTENECE pe
+JOIN CURSO c ON pe.id_curso = c.id_curso
+JOIN CONTIENE con ON c.id_curso = con.id_curso
+JOIN MATERIA mat ON con.id_materia = mat.id_materia
+JOIN ALUMNO a ON pe.id_alumno = a.id_persona
+JOIN PERSONA p ON a.id_persona = p.id_persona
+WHERE a.id_persona = 5
+ORDER BY c.ciclo_lectivo, c.anio;
+
+-- 9. Estado académico general (Promedio y condición de aprobación)
+SELECT 
+    CONCAT(p.apellido, ', ', p.nombre) AS alumno,
+    mat.nombre AS materia, cal.parcial_1, cal.parcial_2,
+    ROUND((IFNULL(cal.parcial_1, 0) + IFNULL(cal.parcial_2, 0)) / 2, 2) AS promedio,
+    CASE 
+        WHEN (IFNULL(cal.parcial_1, 0) + IFNULL(cal.parcial_2, 0)) / 2 >= 6 THEN 'APROBADO'
+        ELSE 'EN RIESGO / DESAPROBADO'
+    END AS estado
+FROM CALIFICACION cal
+JOIN ALUMNO a ON cal.id_alumno = a.id_persona
+JOIN PERSONA p ON a.id_persona = p.id_persona
+JOIN MATERIA mat ON cal.id_materia = mat.id_materia
+ORDER BY alumno, materia;
+
+-- 10. Alumnos con notas de parcial pendientes de carga
+SELECT 
+    CONCAT(p.apellido, ', ', p.nombre) AS alumno,
+    mat.nombre AS materia,
+    CASE 
+        WHEN cal.parcial_1 IS NULL THEN 'Falta 1er Parcial'
+        WHEN cal.parcial_2 IS NULL THEN 'Falta 2do Parcial'
+        ELSE 'Completo'
+    END AS estado_notas
+FROM CALIFICACION cal
+JOIN ALUMNO a ON cal.id_alumno = a.id_persona
+JOIN PERSONA p ON a.id_persona = p.id_persona
+JOIN MATERIA mat ON cal.id_materia = mat.id_materia
+WHERE cal.parcial_1 IS NULL OR cal.parcial_2 IS NULL;
+
+-- 11. Conteo total de alumnos por curso
+SELECT 
+    c.ciclo_lectivo, c.anio, c.division, c.turno,
+    COUNT(pe.id_alumno) AS total_alumnos
+FROM CURSO c
+LEFT JOIN PERTENECE pe ON c.id_curso = pe.id_curso
+GROUP BY c.id_curso, c.ciclo_lectivo, c.anio, c.division, c.turno
+ORDER BY c.anio, c.division;
+
+-- 12. Cursos del turno mañana
+SELECT id_curso, anio, division, ciclo_lectivo, turno
+FROM CURSO
+WHERE turno = 'mañana'
+ORDER BY anio, division;
+
+-- 13. Alumnos con ausencias registradas y total de faltas
+SELECT 
+    CONCAT(p.apellido, ', ', p.nombre) AS alumno,
+    mat.nombre AS materia,
+    SUM(CASE WHEN asi.presente = 0 THEN 1 ELSE 0 END) AS total_faltas
+FROM ASISTE asi
+JOIN ALUMNO a ON asi.id_alumno = a.id_persona
+JOIN PERSONA p ON a.id_persona = p.id_persona
+JOIN MATERIA mat ON asi.id_materia = mat.id_materia
+GROUP BY a.id_persona, mat.id_materia
+HAVING total_faltas > 0
+ORDER BY total_faltas DESC;
