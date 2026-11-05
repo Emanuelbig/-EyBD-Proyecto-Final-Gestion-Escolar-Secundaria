@@ -6,18 +6,14 @@
 USE gestion_escolar;
 
 -- Restricciones de tabla
-
--- Clave primaria para la tabla persona
-ALTER TABLE persona
-	ADD PRIMARY KEY (id_persona);
     
 -- Clave primaria para la tabla profesor
 ALTER TABLE profesor
-	ADD PRIMARY KEY (id_persona);
+	ADD PRIMARY KEY (id_profesor);
 
 -- Clave primaria para la tabla alumno
 ALTER TABLE alumno
-	ADD PRIMARY KEY (id_persona);
+	ADD PRIMARY KEY (id_alumno);
 
 -- Clave primaria para la tabla curso
 ALTER TABLE curso
@@ -45,21 +41,37 @@ ALTER TABLE asiste
     
 -- Restricciones de dominio
 
--- AUTO_INCREMENT Y NOT NULL DE LA TABLA PERSONA
-ALTER TABLE persona
-	MODIFY COLUMN id_persona INT UNSIGNED NOT NULL AUTO_INCREMENT,
+-- AUTO_INCREMENT Y NOT NULL DE LA TABLA ALUMNO
+ALTER TABLE alumno
+	MODIFY COLUMN id_alumno INT UNSIGNED NOT NULL AUTO_INCREMENT,
     MODIFY COLUMN dni CHAR(8) NOT NULL,
     MODIFY COLUMN nombre VARCHAR(50) NOT NULL,
     MODIFY COLUMN apellido VARCHAR(50) NOT NULL,
     MODIFY COLUMN legajo VARCHAR(10) NOT NULL;
     
--- UNIQUE Y CHECK DE LA TABLA PERSONA
-ALTER TABLE persona
-	ADD CONSTRAINT uq_persona_dni UNIQUE (dni),
-    ADD CONSTRAINT uq_persona_email UNIQUE (email),
-    ADD CONSTRAINT uq_persona_legajo UNIQUE (legajo),
-    ADD CONSTRAINT ck_persona_dni CHECK (dni REGEXP '^[0-9]{7,8}$'),
-    ADD CONSTRAINT ck_persona_email CHECK (email LIKE '%@%');
+-- UNIQUE Y CHECK DE LA TABLA ALUMNO
+ALTER TABLE alumno
+	ADD CONSTRAINT uq_alumno_dni UNIQUE (dni),
+    ADD CONSTRAINT uq_alumno_email UNIQUE (email),
+    ADD CONSTRAINT uq_alumno_legajo UNIQUE (legajo),
+    ADD CONSTRAINT ck_alumno_dni CHECK (dni REGEXP '^[0-9]{7,8}$'),
+    ADD CONSTRAINT ck_alumno_email CHECK (email LIKE '%@%');
+    
+-- AUTO_INCREMENT Y NOT NULL DE LA TABLA PROFESOR
+ALTER TABLE profesor
+	MODIFY COLUMN id_profesor INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    MODIFY COLUMN dni CHAR(8) NOT NULL,
+    MODIFY COLUMN nombre VARCHAR(50) NOT NULL,
+    MODIFY COLUMN apellido VARCHAR(50) NOT NULL,
+    MODIFY COLUMN legajo VARCHAR(10) NOT NULL;
+    
+-- UNIQUE Y CHECK DE LA TABLA PROFESOR
+ALTER TABLE profesor
+	ADD CONSTRAINT uq_profesor_dni UNIQUE (dni),
+    ADD CONSTRAINT uq_profesor_email UNIQUE (email),
+    ADD CONSTRAINT uq_profesor_legajo UNIQUE (legajo),
+    ADD CONSTRAINT ck_profesor_dni CHECK (dni REGEXP '^[0-9]{7,8}$'),
+    ADD CONSTRAINT ck_profesor_email CHECK (email LIKE '%@%');    
     
 -- AUTO INCREMENT Y NOT NULL DE LA TABLA CURSO
 ALTER TABLE curso
@@ -144,22 +156,12 @@ ALTER TABLE asiste
 -- Restricciones de integridad referencial
 -- Aca controlamos que los datos que se relacionan entre tablas se relacionen bien y no queden rotos, que no se pueda borrar un profesor si tiene materias, etc.
 
--- Clave foranea de la tabla profesor
-ALTER TABLE profesor
-    ADD CONSTRAINT fk_profesor_persona FOREIGN KEY (id_persona)
-        REFERENCES persona (id_persona) ON DELETE CASCADE ON UPDATE CASCADE;
-
--- Clave foranea de la tabla alumno
-ALTER TABLE alumno
-    ADD CONSTRAINT fk_alumno_persona FOREIGN KEY (id_persona)
-        REFERENCES persona (id_persona) ON DELETE CASCADE ON UPDATE CASCADE;
-
 -- Claves foraneas de la tabla materia
 ALTER TABLE materia
 	-- Agregamos indices para buscar mas rapido
     ADD KEY idx_materia_profesor (id_profesor),
     ADD CONSTRAINT fk_materia_profesor FOREIGN KEY (id_profesor)
-        REFERENCES profesor (id_persona) ON DELETE RESTRICT ON UPDATE CASCADE;
+        REFERENCES profesor (id_profesor) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- Claves foraneas de la tabla contiene
 ALTER TABLE contiene
@@ -175,7 +177,7 @@ ALTER TABLE calificacion
     ADD KEY idx_calificacion_alumno (id_alumno),
     ADD KEY idx_calificacion_materia (id_materia),
     ADD CONSTRAINT fk_calificacion_alumno FOREIGN KEY (id_alumno)
-        REFERENCES alumno (id_persona) ON DELETE RESTRICT ON UPDATE CASCADE,
+        REFERENCES alumno (id_alumno) ON DELETE RESTRICT ON UPDATE CASCADE,
     ADD CONSTRAINT fk_calificacion_materia FOREIGN KEY (id_materia)
         REFERENCES materia (id_materia) ON DELETE RESTRICT ON UPDATE CASCADE;
 
@@ -184,7 +186,7 @@ ALTER TABLE pertenece
     ADD KEY idx_pertenece_alumno (id_alumno),
     ADD KEY idx_pertenece_curso (id_curso),
     ADD CONSTRAINT fk_pertenece_alumno FOREIGN KEY (id_alumno)
-        REFERENCES alumno (id_persona) ON DELETE CASCADE ON UPDATE CASCADE,
+        REFERENCES alumno (id_alumno) ON DELETE CASCADE ON UPDATE CASCADE,
     ADD CONSTRAINT fk_pertenece_curso FOREIGN KEY (id_curso)
         REFERENCES curso (id_curso) ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -193,19 +195,23 @@ ALTER TABLE asiste
     ADD KEY idx_asiste_alumno (id_alumno),
     ADD KEY idx_asiste_materia (id_materia),
     ADD CONSTRAINT fk_asiste_alumno FOREIGN KEY (id_alumno)
-        REFERENCES alumno (id_persona) ON DELETE RESTRICT ON UPDATE CASCADE,
+        REFERENCES alumno (id_alumno) ON DELETE RESTRICT ON UPDATE CASCADE,
     ADD CONSTRAINT fk_asiste_materia FOREIGN KEY (id_materia)
         REFERENCES materia (id_materia) ON DELETE RESTRICT ON UPDATE CASCADE;
         
 -- INDICES
 
--- Indice para buscar personas por apellido mas rapido
-ALTER TABLE persona
-    ADD KEY idx_persona_apellido (apellido);
+-- Indice para buscar alumnos por apellido mas rapido
+ALTER TABLE alumno
+    ADD KEY idx_alumno_apellido (apellido);
+    
+-- Indice para buscar profesores por apellido mas rapido
+ALTER TABLE profesor
+    ADD KEY idx_profesor_apellido (apellido);
 
 -- Indice para buscar asistencias por fecha mas rapido
 ALTER TABLE asiste
     ADD KEY idx_asiste_fecha (fecha);
     
--- Aca podriamos poner un trigger para quue no se pueda cargar una persona con fecha de nacimiento futura
--- y otro que no deje cargarle una nota a un alumno al que no pertenece a una materia en especifico.
+-- Aca podriamos poner un trigger para que no se pueda cargar un profesor o un alumno con fecha de nacimiento futura
+-- y otro que no deje cargarle una nota a un alumno en una materia que no es de su curso.

@@ -8,9 +8,9 @@ DROP DATABASE IF EXISTS gestion_escolar;
 CREATE DATABASE gestion_escolar CHARACTER SET utf8mb4;
 USE gestion_escolar;
 
--- Tabla persona
-CREATE TABLE IF NOT EXISTS persona (
-	id_persona INT UNSIGNED,
+-- Tabla profesor
+CREATE TABLE IF NOT EXISTS profesor (
+	id_profesor INT UNSIGNED,
     dni CHAR(8),
     nombre VARCHAR(50),
     apellido VARCHAR(50), 
@@ -20,14 +20,16 @@ CREATE TABLE IF NOT EXISTS persona (
     legajo VARCHAR(10)
 ); 
 
--- Tabla profesor
-CREATE TABLE IF NOT EXISTS profesor (
-	id_persona INT UNSIGNED
-); 
-
 -- Tabla alumno
 CREATE TABLE IF NOT EXISTS alumno (
-	id_persona INT UNSIGNED
+	id_alumno INT UNSIGNED,
+    dni CHAR(8),
+    nombre VARCHAR(50),
+    apellido VARCHAR(50), 
+    fecha_nacimiento DATE,
+    email VARCHAR(50),
+    telefono VARCHAR(20),
+    legajo VARCHAR(10)
 ); 
 
 -- Tabla curso

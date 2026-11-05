@@ -13,9 +13,9 @@ DROP DATABASE IF EXISTS gestion_escolar;
 CREATE DATABASE gestion_escolar CHARACTER SET utf8mb4;
 USE gestion_escolar;
 
--- Tabla persona
-CREATE TABLE IF NOT EXISTS persona (
-	id_persona INT UNSIGNED,
+-- Tabla profesor
+CREATE TABLE IF NOT EXISTS profesor (
+	id_profesor INT UNSIGNED,
     dni CHAR(8),
     nombre VARCHAR(50),
     apellido VARCHAR(50), 
@@ -25,14 +25,16 @@ CREATE TABLE IF NOT EXISTS persona (
     legajo VARCHAR(10)
 ); 
 
--- Tabla profesor
-CREATE TABLE IF NOT EXISTS profesor (
-	id_persona INT UNSIGNED
-); 
-
 -- Tabla alumno
 CREATE TABLE IF NOT EXISTS alumno (
-	id_persona INT UNSIGNED
+	id_alumno INT UNSIGNED,
+    dni CHAR(8),
+    nombre VARCHAR(50),
+    apellido VARCHAR(50), 
+    fecha_nacimiento DATE,
+    email VARCHAR(50),
+    telefono VARCHAR(20),
+    legajo VARCHAR(10)
 ); 
 
 -- Tabla curso
@@ -95,18 +97,14 @@ CREATE TABLE IF NOT EXISTS asiste (
 USE gestion_escolar;
 
 -- Restricciones de tabla
-
--- Clave primaria para la tabla persona
-ALTER TABLE persona
-	ADD PRIMARY KEY (id_persona);
     
 -- Clave primaria para la tabla profesor
 ALTER TABLE profesor
-	ADD PRIMARY KEY (id_persona);
+	ADD PRIMARY KEY (id_profesor);
 
 -- Clave primaria para la tabla alumno
 ALTER TABLE alumno
-	ADD PRIMARY KEY (id_persona);
+	ADD PRIMARY KEY (id_alumno);
 
 -- Clave primaria para la tabla curso
 ALTER TABLE curso
@@ -134,21 +132,37 @@ ALTER TABLE asiste
     
 -- Restricciones de dominio
 
--- AUTO_INCREMENT Y NOT NULL DE LA TABLA PERSONA
-ALTER TABLE persona
-	MODIFY COLUMN id_persona INT UNSIGNED NOT NULL AUTO_INCREMENT,
+-- AUTO_INCREMENT Y NOT NULL DE LA TABLA ALUMNO
+ALTER TABLE alumno
+	MODIFY COLUMN id_alumno INT UNSIGNED NOT NULL AUTO_INCREMENT,
     MODIFY COLUMN dni CHAR(8) NOT NULL,
     MODIFY COLUMN nombre VARCHAR(50) NOT NULL,
     MODIFY COLUMN apellido VARCHAR(50) NOT NULL,
     MODIFY COLUMN legajo VARCHAR(10) NOT NULL;
     
--- UNIQUE Y CHECK DE LA TABLA PERSONA
-ALTER TABLE persona
-	ADD CONSTRAINT uq_persona_dni UNIQUE (dni),
-    ADD CONSTRAINT uq_persona_email UNIQUE (email),
-    ADD CONSTRAINT uq_persona_legajo UNIQUE (legajo),
-    ADD CONSTRAINT ck_persona_dni CHECK (dni REGEXP '^[0-9]{7,8}$'),
-    ADD CONSTRAINT ck_persona_email CHECK (email LIKE '%@%');
+-- UNIQUE Y CHECK DE LA TABLA ALUMNO
+ALTER TABLE alumno
+	ADD CONSTRAINT uq_alumno_dni UNIQUE (dni),
+    ADD CONSTRAINT uq_alumno_email UNIQUE (email),
+    ADD CONSTRAINT uq_alumno_legajo UNIQUE (legajo),
+    ADD CONSTRAINT ck_alumno_dni CHECK (dni REGEXP '^[0-9]{7,8}$'),
+    ADD CONSTRAINT ck_alumno_email CHECK (email LIKE '%@%');
+    
+-- AUTO_INCREMENT Y NOT NULL DE LA TABLA PROFESOR
+ALTER TABLE profesor
+	MODIFY COLUMN id_profesor INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    MODIFY COLUMN dni CHAR(8) NOT NULL,
+    MODIFY COLUMN nombre VARCHAR(50) NOT NULL,
+    MODIFY COLUMN apellido VARCHAR(50) NOT NULL,
+    MODIFY COLUMN legajo VARCHAR(10) NOT NULL;
+    
+-- UNIQUE Y CHECK DE LA TABLA PROFESOR
+ALTER TABLE profesor
+	ADD CONSTRAINT uq_profesor_dni UNIQUE (dni),
+    ADD CONSTRAINT uq_profesor_email UNIQUE (email),
+    ADD CONSTRAINT uq_profesor_legajo UNIQUE (legajo),
+    ADD CONSTRAINT ck_profesor_dni CHECK (dni REGEXP '^[0-9]{7,8}$'),
+    ADD CONSTRAINT ck_profesor_email CHECK (email LIKE '%@%');    
     
 -- AUTO INCREMENT Y NOT NULL DE LA TABLA CURSO
 ALTER TABLE curso
@@ -233,22 +247,12 @@ ALTER TABLE asiste
 -- Restricciones de integridad referencial
 -- Aca controlamos que los datos que se relacionan entre tablas se relacionen bien y no queden rotos, que no se pueda borrar un profesor si tiene materias, etc.
 
--- Clave foranea de la tabla profesor
-ALTER TABLE profesor
-    ADD CONSTRAINT fk_profesor_persona FOREIGN KEY (id_persona)
-        REFERENCES persona (id_persona) ON DELETE CASCADE ON UPDATE CASCADE;
-
--- Clave foranea de la tabla alumno
-ALTER TABLE alumno
-    ADD CONSTRAINT fk_alumno_persona FOREIGN KEY (id_persona)
-        REFERENCES persona (id_persona) ON DELETE CASCADE ON UPDATE CASCADE;
-
 -- Claves foraneas de la tabla materia
 ALTER TABLE materia
 	-- Agregamos indices para buscar mas rapido
     ADD KEY idx_materia_profesor (id_profesor),
     ADD CONSTRAINT fk_materia_profesor FOREIGN KEY (id_profesor)
-        REFERENCES profesor (id_persona) ON DELETE RESTRICT ON UPDATE CASCADE;
+        REFERENCES profesor (id_profesor) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- Claves foraneas de la tabla contiene
 ALTER TABLE contiene
@@ -264,7 +268,7 @@ ALTER TABLE calificacion
     ADD KEY idx_calificacion_alumno (id_alumno),
     ADD KEY idx_calificacion_materia (id_materia),
     ADD CONSTRAINT fk_calificacion_alumno FOREIGN KEY (id_alumno)
-        REFERENCES alumno (id_persona) ON DELETE RESTRICT ON UPDATE CASCADE,
+        REFERENCES alumno (id_alumno) ON DELETE RESTRICT ON UPDATE CASCADE,
     ADD CONSTRAINT fk_calificacion_materia FOREIGN KEY (id_materia)
         REFERENCES materia (id_materia) ON DELETE RESTRICT ON UPDATE CASCADE;
 
@@ -273,7 +277,7 @@ ALTER TABLE pertenece
     ADD KEY idx_pertenece_alumno (id_alumno),
     ADD KEY idx_pertenece_curso (id_curso),
     ADD CONSTRAINT fk_pertenece_alumno FOREIGN KEY (id_alumno)
-        REFERENCES alumno (id_persona) ON DELETE CASCADE ON UPDATE CASCADE,
+        REFERENCES alumno (id_alumno) ON DELETE CASCADE ON UPDATE CASCADE,
     ADD CONSTRAINT fk_pertenece_curso FOREIGN KEY (id_curso)
         REFERENCES curso (id_curso) ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -282,22 +286,26 @@ ALTER TABLE asiste
     ADD KEY idx_asiste_alumno (id_alumno),
     ADD KEY idx_asiste_materia (id_materia),
     ADD CONSTRAINT fk_asiste_alumno FOREIGN KEY (id_alumno)
-        REFERENCES alumno (id_persona) ON DELETE RESTRICT ON UPDATE CASCADE,
+        REFERENCES alumno (id_alumno) ON DELETE RESTRICT ON UPDATE CASCADE,
     ADD CONSTRAINT fk_asiste_materia FOREIGN KEY (id_materia)
         REFERENCES materia (id_materia) ON DELETE RESTRICT ON UPDATE CASCADE;
         
 -- INDICES
 
--- Indice para buscar personas por apellido mas rapido
-ALTER TABLE persona
-    ADD KEY idx_persona_apellido (apellido);
+-- Indice para buscar alumnos por apellido mas rapido
+ALTER TABLE alumno
+    ADD KEY idx_alumno_apellido (apellido);
+    
+-- Indice para buscar profesores por apellido mas rapido
+ALTER TABLE profesor
+    ADD KEY idx_profesor_apellido (apellido);
 
 -- Indice para buscar asistencias por fecha mas rapido
 ALTER TABLE asiste
     ADD KEY idx_asiste_fecha (fecha);
     
--- Aca podriamos poner un trigger para quue no se pueda cargar una persona con fecha de nacimiento futura
--- y otro que no deje cargarle una nota a un alumno al que no pertenece a una materia en especifico.
+-- Aca podriamos poner un trigger para que no se pueda cargar un profesor o un alumno con fecha de nacimiento futura
+-- y otro que no deje cargarle una nota a un alumno en una materia que no es de su curso.
 
 -- 03_insercion_datos: aca se cargan los datos
 
@@ -306,13 +314,16 @@ USE gestion_escolar;
 #hay que preguntarle al profe, una compañera me dijo que lo saque. 
 #sacar los primary key de aca, son autoincrementales esta parametrizado, no vale la pena ponerlo.
 #mantener los comentarios en los sql
-INSERT INTO persona (dni, nombre, apellido, fecha_nacimiento, email, telefono, legajo)
+INSERT INTO profesor (dni, nombre, apellido, fecha_nacimiento, email, telefono, legajo)
 VALUES
 	('28111222', 'Carlos', 'Ruiz', '1980-05-14', 'cruiz@colegio.edu.ar', '1144445555', 'PRO001'),
     ('30555666', 'Mariana', 'Silva', '1983-08-22', 'msilva@colegio.edu.ar', '1155556666', 'PRO002'),
     ('31999888', 'Jorge', 'Lopez', '1985-11-03', 'jlopez@colegio.edu.ar', '1166667777', 'PRO003'),
-    ('29444333', 'Andrea', 'Fernandez', '1982-02-19', 'afernandez@colegio.edu.ar', '1177778888', 'PRO004'),
-    ('52100101', 'Mateo', 'Rossi', '2012-03-15', 'mrossi@alumno.edu.ar', '1122334401', 'ALU001'),
+    ('29444333', 'Andrea', 'Fernandez', '1982-02-19', 'afernandez@colegio.edu.ar', '1177778888', 'PRO004');
+    
+INSERT INTO alumno (dni, nombre, apellido, fecha_nacimiento, email, telefono, legajo)
+VALUES
+	('52100101', 'Mateo', 'Rossi', '2012-03-15', 'mrossi@alumno.edu.ar', '1122334401', 'ALU001'),
     ('53200202', 'Sofia', 'Gimenez', '2013-05-20', 'sgimenez@alumno.edu.ar', '1122334402', 'ALU002'),
     ('52300303', 'Lucas', 'Romero', '2012-08-10', 'lromero@alumno.edu.ar', '1122334403', 'ALU003'),
     ('53400404', 'Valentina', 'Sosa', '2013-11-25', 'vsosa@alumno.edu.ar', '1122334404', 'ALU004'),
@@ -327,31 +338,6 @@ VALUES
     ('52444444', 'Benjamin', 'Cabrera', '2012-10-17', 'bcabrera@alumno.edu.ar', '1122334413', 'ALU013'),
     ('53555555', 'Mia', 'Rios', '2013-12-05', 'mrios@alumno.edu.ar', '1122334414', 'ALU014'),
     ('52666666', 'Felipe', 'Vega', '2012-05-09', 'fvega@alumno.edu.ar', '1122334415', 'ALU015');
-    
-INSERT INTO profesor (id_persona)
-VALUES
-	(1),
-    (2),
-    (3),
-    (4);
-    
-INSERT INTO alumno (id_persona)
-VALUES
-	(5),
-    (6),
-    (7),
-    (8),
-    (9),
-    (10),
-    (11),
-    (12),
-    (13),
-    (14),
-    (15),
-    (16),
-    (17),
-    (18),
-    (19);
     
 INSERT INTO curso (anio, division, ciclo_lectivo, turno)
 VALUES
@@ -398,143 +384,143 @@ VALUES
     #Entonces los nacidos en 2012, el año pasado cursaron 1 A 2025 (curso con id num 1) y este año estan a 2 A 2026 (curso con id numero 2).
     #Un alumno puede estar en muchos cursos (uno por año)
     # y un curso tiene muchos alumnos. Eso es la relación N:M, y por eso pertenece es una tabla aparte.
+    (1, 1),  (1, 2),     
+    (3, 1),  (3, 2),     
     (5, 1),  (5, 2),     
-    (7, 1),  (7, 2),     
-    (9, 1),  (9, 2),     
+    (7, 1), (7, 2),    
+    (9, 1), (9, 2),    
     (11, 1), (11, 2),    
-    (13, 1), (13, 2),    
+    (13, 1), (13, 2),   
     (15, 1), (15, 2),    
-    (17, 1), (17, 2),   
-    (19, 1), (19, 2),    
     #nacidos en 2013: 1 A 2026 (curso 3)
-    (6, 3),              
-    (8, 3),              
-    (10, 3),             
-    (12, 3),             
+    (2, 3),              
+    (4, 3),              
+    (6, 3),             
+    (8, 3),             
     #nacidos en 2013: 1 B 2026, tarde (curso 4)
-    (14, 4),             
-    (16, 4),             
-    (18, 4);
+    (10, 4),             
+    (12, 4),             
+    (14, 4);
     
 INSERT INTO calificacion (id_alumno, id_materia, parcial_1, parcial_2)
 VALUES
     #Matematica de 1er año (materia 1) en 1ero A 2025
-    (5, 1, 7.50, 8),
-    (7, 1, 6.50, 6.50),
-    (9, 1, 9, 9.50),
-    (11, 1, 3.50, 5.50),
-    (13, 1, 7.50, 6),
-    (15, 1, 4.50, 5),
-    (17, 1, 8, 9.50),
-    (19, 1, 7, 4.50),
+    (1, 1, 7.50, 8),
+    (3, 1, 6.50, 6.50),
+    (5, 1, 9, 9.50),
+    (7, 1, 3.50, 5.50),
+    (9, 1, 7.50, 6),
+    (11, 1, 4.50, 5),
+    (13, 1, 8, 9.50),
+    (15, 1, 7, 4.50),
     #Lengua de 1er año (materia 2) en 1ero A 2025
-    (5, 2, 8, 7.50),
-    (7, 2, 5.50, 7.50),
-    (9, 2, 9.50, 9),
-    (11, 2, 4, 5),
-    (13, 2, 6.50, 7),
+    (1, 2, 8, 7.50),
+    (3, 2, 5.50, 7.50),
+    (5, 2, 9.50, 9),
+    (7, 2, 4, 5),
+    (9, 2, 6.50, 7),
+    (11, 2, 6, 5.50),
+    (13, 2, 8.50, 9),
     (15, 2, 6, 5.50),
-    (17, 2, 8.50, 9),
-    (19, 2, 6, 5.50),
     #Historia de 1er año (materia 3) en 1ero A 2025
-    (5, 3, 8.50, 7),
-    (7, 3, 6, 7),
-    (9, 3, 8.50, 10),
-    (11, 3, 4.50, 4.50),
-    (13, 3, 7, 6.50),
-    (15, 3, 5, 6.50),
-    (17, 3, 9, 8.50),
-    (19, 3, 6.50, 5),
+    (1, 3, 8.50, 7),
+    (3, 3, 6, 7),
+    (5, 3, 8.50, 10),
+    (7, 3, 4.50, 4.50),
+    (9, 3, 7, 6.50),
+    (11, 3, 5, 6.50),
+    (13, 3, 9, 8.50),
+    (15, 3, 6.50, 5),
     #Matematica de 2do año (materia 5) en 2do A 2026
-    (5, 5, 7.50, 8),
-    (7, 5, 6.50, 6.50),
-    (9, 5, 9, 9.50),
-    (11, 5, 2.50, 4.50),
-    (13, 5, 7.50, 6),
-    (15, 5, 5.50, 6),
-    (17, 5, 8, 9.50),
-    (19, 5, 7, 4.50),
+    (1, 5, 7.50, 8),
+    (3, 5, 6.50, 6.50),
+    (5, 5, 9, 9.50),
+    (7, 5, 2.50, 4.50),
+    (9, 5, 7.50, 6),
+    (11, 5, 5.50, 6),
+    (13, 5, 8, 9.50),
+    (15, 5, 7, 4.50),
     #Lengua de 2do año (materia 6) en 2do A 2026
-    (5, 6, 8, 7.50),
-    (7, 6, 5.50, 7.50),
-    (9, 6, 9.50, 9),
-    (11, 6, 4, 5),
-    (13, 6, 6.50, 7),
+    (1, 6, 8, 7.50),
+    (3, 6, 5.50, 7.50),
+    (5, 6, 9.50, 9),
+    (7, 6, 4, 5),
+    (9, 6, 6.50, 7),
+    (11, 6, 6, 5.50),
+    (13, 6, 8.50, 9),
     (15, 6, 6, 5.50),
-    (17, 6, 8.50, 9),
-    (19, 6, 6, 5.50),
     #Física de 2do año (materia 7) en 2° A 2026
-    (5, 7, 8.50, 7),
-    (7, 7, 6, 7),
-    (9, 7, 8.50, 10),
-    (11, 7, 4.50, 4.50),
-    (13, 7, 7, 6.50),
-    (15, 7, 5, 6.50),
-    (17, 7, 9, 8.50),
-    (19, 7, 4, 5),
+    (1, 7, 8.50, 7),
+    (3, 7, 6, 7),
+    (5, 7, 8.50, 10),
+    (7, 7, 4.50, 4.50),
+    (9, 7, 7, 6.50),
+    (11, 7, 5, 6.50),
+    (13, 7, 9, 8.50),
+    (15, 7, 4, 5),
     #Matematica de 1er año (materia 1) en 1ero A 2026
-    (6, 1, 9, 8.50),
-    (8, 1, 6.50, 8),
-    (10, 1, 5.50, 5),
-    (12, 1, 3.50, 4),
+    (2, 1, 9, 8.50),
+    (4, 1, 6.50, 8),
+    (6, 1, 5.50, 5),
+    (8, 1, 3.50, 4),
     #Lengua de 1er año (materia 2) en 1ero A 2026
-    (6, 2, 9.50, 8),
-    (8, 2, 7, 7.50),
-    (10, 2, 5.50, 7),
-    (12, 2, 4, 3.50),
+    (2, 2, 9.50, 8),
+    (4, 2, 7, 7.50),
+    (6, 2, 5.50, 7),
+    (8, 2, 4, 3.50),
     #Historia de 1er año (materia 3) en 1ero A 2026 (parcial 2 todavia no rendido)
-    (6, 3, 8.50, NULL),
-    (8, 3, 7.50, NULL),
-    (10, 3, 6, NULL),
-    (12, 3, 3, NULL),
+    (2, 3, 8.50, NULL),
+    (4, 3, 7.50, NULL),
+    (6, 3, 6, NULL),
+    (8, 3, 3, NULL),
     #Matematica de 1er año (materia 1) en 1ero B 2026 (tarde)
-    (14, 1, 7.50, 8.50),
-    (16, 1, 4.50, 3),
-    (18, 1, 7.50, 9),
+    (10, 1, 7.50, 8.50),
+    (12, 1, 4.50, 3),
+    (14, 1, 7.50, 9),
     #Lengua de 1er año (materia 2) en 1ero B 2026 (tarde)
-    (14, 2, 8, 8),
-    (16, 2, 4.50, 5),
-    (18, 2, 8, 8.50),
+    (10, 2, 8, 8),
+    (12, 2, 4.50, 5),
+    (14, 2, 8, 8.50),
     #Biologia de 1er año (materia 4) en 1ero B 2026 (tarde) (parcial 2 todavia no rendido)
-    (14, 4, 8.50, NULL),
-    (16, 4, 5, NULL),
-    (18, 4, 7, NULL);
+    (10, 4, 8.50, NULL),
+    (12, 4, 5, NULL),
+    (14, 4, 7, NULL);
 
 INSERT INTO asiste (id_alumno, id_materia, fecha, presente)
 VALUES
     #Matemática de 2do año (materia 5) en 2° A 2026
+    (1, 5, '2026-10-05', 1), (1, 5, '2026-10-12', 1), (1, 5, '2026-10-19', 1),
+    (3, 5, '2026-10-05', 1), (3, 5, '2026-10-12', 1), (3, 5, '2026-10-19', 1),
     (5, 5, '2026-10-05', 1), (5, 5, '2026-10-12', 1), (5, 5, '2026-10-19', 1),
-    (7, 5, '2026-10-05', 1), (7, 5, '2026-10-12', 1), (7, 5, '2026-10-19', 1),
+    (7, 5, '2026-10-05', 0), (7, 5, '2026-10-12', 0), (7, 5, '2026-10-19', 1),
     (9, 5, '2026-10-05', 1), (9, 5, '2026-10-12', 1), (9, 5, '2026-10-19', 1),
-    (11, 5, '2026-10-05', 0), (11, 5, '2026-10-12', 0), (11, 5, '2026-10-19', 1),
+    (11, 5, '2026-10-05', 1), (11, 5, '2026-10-12', 1), (11, 5, '2026-10-19', 1),
     (13, 5, '2026-10-05', 1), (13, 5, '2026-10-12', 1), (13, 5, '2026-10-19', 1),
     (15, 5, '2026-10-05', 1), (15, 5, '2026-10-12', 1), (15, 5, '2026-10-19', 1),
-    (17, 5, '2026-10-05', 1), (17, 5, '2026-10-12', 1), (17, 5, '2026-10-19', 1),
-    (19, 5, '2026-10-05', 1), (19, 5, '2026-10-12', 1), (19, 5, '2026-10-19', 1),
     #Lengua de 2do año (materia 6) en 2° A 2026
+    (1, 6, '2026-10-06', 1), (1, 6, '2026-10-13', 1), (1, 6, '2026-10-20', 1),
+    (3, 6, '2026-10-06', 1), (3, 6, '2026-10-13', 1), (3, 6, '2026-10-20', 1),
     (5, 6, '2026-10-06', 1), (5, 6, '2026-10-13', 1), (5, 6, '2026-10-20', 1),
-    (7, 6, '2026-10-06', 1), (7, 6, '2026-10-13', 1), (7, 6, '2026-10-20', 1),
+    (7, 6, '2026-10-06', 1), (7, 6, '2026-10-13', 0), (7, 6, '2026-10-20', 1),
     (9, 6, '2026-10-06', 1), (9, 6, '2026-10-13', 1), (9, 6, '2026-10-20', 1),
-    (11, 6, '2026-10-06', 1), (11, 6, '2026-10-13', 0), (11, 6, '2026-10-20', 1),
+    (11, 6, '2026-10-06', 1), (11, 6, '2026-10-13', 1), (11, 6, '2026-10-20', 1),
     (13, 6, '2026-10-06', 1), (13, 6, '2026-10-13', 1), (13, 6, '2026-10-20', 1),
-    (15, 6, '2026-10-06', 1), (15, 6, '2026-10-13', 1), (15, 6, '2026-10-20', 1),
-    (17, 6, '2026-10-06', 1), (17, 6, '2026-10-13', 1), (17, 6, '2026-10-20', 1),
-    (19, 6, '2026-10-06', 1), (19, 6, '2026-10-13', 1), (19, 6, '2026-10-20', 0),
+    (15, 6, '2026-10-06', 1), (15, 6, '2026-10-13', 1), (15, 6, '2026-10-20', 0),
     #Matemática de 1er año (materia 1) en 1° A 2026
+    (2, 1, '2026-10-05', 1), (2, 1, '2026-10-12', 1), (2, 1, '2026-10-19', 1),
+    (4, 1, '2026-10-05', 1), (4, 1, '2026-10-12', 1), (4, 1, '2026-10-19', 1),
     (6, 1, '2026-10-05', 1), (6, 1, '2026-10-12', 1), (6, 1, '2026-10-19', 1),
-    (8, 1, '2026-10-05', 1), (8, 1, '2026-10-12', 1), (8, 1, '2026-10-19', 1),
-    (10, 1, '2026-10-05', 1), (10, 1, '2026-10-12', 1), (10, 1, '2026-10-19', 1),
-    (12, 1, '2026-10-05', 0), (12, 1, '2026-10-12', 1), (12, 1, '2026-10-19', 0),
+    (8, 1, '2026-10-05', 0), (8, 1, '2026-10-12', 1), (8, 1, '2026-10-19', 0),
     #Lengua de 1er año (materia 2) en 1° A 2026
-    (6, 2, '2026-09-30', 1), (6, 2, '2026-10-07', 1), (6, 2, '2026-10-14', 1),
-    (8, 2, '2026-09-30', 1), (8, 2, '2026-10-07', 1), (8, 2, '2026-10-14', 1),
-    (10, 2, '2026-09-30', 0), (10, 2, '2026-10-07', 1), (10, 2, '2026-10-14', 1),
-    (12, 2, '2026-09-30', 1), (12, 2, '2026-10-07', 0), (12, 2, '2026-10-14', 1),
+    (2, 2, '2026-09-30', 1), (2, 2, '2026-10-07', 1), (2, 2, '2026-10-14', 1),
+    (4, 2, '2026-09-30', 1), (4, 2, '2026-10-07', 1), (4, 2, '2026-10-14', 1),
+    (6, 2, '2026-09-30', 0), (6, 2, '2026-10-07', 1), (6, 2, '2026-10-14', 1),
+    (8, 2, '2026-09-30', 1), (8, 2, '2026-10-07', 0), (8, 2, '2026-10-14', 1),
     #Matemática de 1er año (materia 1) en 1° B 2026 (tarde)
+    (10, 1, '2026-10-05', 1), (10, 1, '2026-10-12', 1), (10, 1, '2026-10-19', 1),
+    (12, 1, '2026-10-05', 1), (12, 1, '2026-10-12', 0), (12, 1, '2026-10-19', 1),
     (14, 1, '2026-10-05', 1), (14, 1, '2026-10-12', 1), (14, 1, '2026-10-19', 1),
-    (16, 1, '2026-10-05', 1), (16, 1, '2026-10-12', 0), (16, 1, '2026-10-19', 1),
-    (18, 1, '2026-10-05', 1), (18, 1, '2026-10-12', 1), (18, 1, '2026-10-19', 1),
     #Lengua de 1er año (materia 2) en 1° B 2026 (tarde)
-    (14, 2, '2026-10-06', 1), (14, 2, '2026-10-13', 1), (14, 2, '2026-10-20', 1),
-    (16, 2, '2026-10-06', 1), (16, 2, '2026-10-13', 1), (16, 2, '2026-10-20', 1),
-    (18, 2, '2026-10-06', 1), (18, 2, '2026-10-13', 1), (18, 2, '2026-10-20', 1);
+    (10, 2, '2026-10-06', 1), (10, 2, '2026-10-13', 1), (10, 2, '2026-10-20', 1),
+    (12, 2, '2026-10-06', 1), (12, 2, '2026-10-13', 1), (12, 2, '2026-10-20', 1),
+    (14, 2, '2026-10-06', 1), (14, 2, '2026-10-13', 1), (14, 2, '2026-10-20', 1);

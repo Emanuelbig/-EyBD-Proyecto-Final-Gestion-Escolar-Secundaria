@@ -3,12 +3,12 @@
 Trabajo final de Estructura y Base de Datos (UTN - INSPT, 2026).
 Grupo 7: Forclaz - Ponce - Morano Solé.
 
-Base de datos en MySQL para una escuela secundaria: personas (profesores y alumnos), cursos, materias, inscripciones, asistencia y notas.
+Base de datos en MySQL para una escuela secundaria: profesores, alumnos, cursos, materias, inscripciones, asistencia y notas.
 
 ## Qué hay en cada carpeta
 
 - `scripts-sql`: los scripts de la base.
-- `diagramas`: MER y modelo de tablas (versión 4).
+- `diagramas`: MER y modelo de tablas (versión 5).
 - `documentacion`: informe y diccionario de datos.
 - `versiones-anteriores`: la entrega parcial y los primeros bocetos.
 

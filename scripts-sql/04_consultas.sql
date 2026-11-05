@@ -14,7 +14,7 @@ SELECT c.ciclo_lectivo, c.anio, c.division, c.turno, p.dni, p.apellido, p.nombre
 FROM pertenece pe
 JOIN persona p ON p.id_persona = pe.id_alumno
 JOIN curso c ON c.id_curso = pe.id_curso
-WHERE c.id_curso = 2
+WHERE c.id_curso = 6
 ORDER BY p.apellido, p.nombre;
 
 -- 2. Cantidad de alumnos por curso
