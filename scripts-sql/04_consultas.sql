@@ -10,20 +10,20 @@ USE gestion_escolar;
 -- Lista de un curso con los datos de contacto de cada alumno.
 -- Se muestra el ciclo lectivo porque "1 A" existe en 2025 y en 2026.
 --
-SELECT c.ciclo_lectivo, c.anio, c.division, c.turno, p.dni, p.apellido, p.nombre, p.email
+SELECT c.ciclo_lectivo, c.anio, c.division, c.turno, al.dni, al.apellido, al.nombre, al.email
 FROM pertenece pe
-JOIN persona p ON p.id_persona = pe.id_alumno
+JOIN alumno al ON al.id_alumno = pe.id_alumno
 JOIN curso c ON c.id_curso = pe.id_curso
-WHERE c.id_curso = 6
-ORDER BY p.apellido, p.nombre;
+WHERE c.id_curso = 1
+ORDER BY al.apellido, al.nombre;
 
 -- 2. Cantidad de alumnos por curso
 --
 -- Con LEFT JOIN tambien aparecerian los cursos sin ningun inscripto (con 0).
 --
-SELECT c.ciclo_lectivo, c.anio, c.division, c.turno, COUNT(pe.id_alumno) AS total_alumnos
+SELECT c.ciclo_lectivo, c.anio, c.division, c.turno, COUNT(pe.id_alumno) AS total_alumnos -- con COUNT() contamos los alumnos y ponemos esa cantidad en una columna nueva llamada total_alumnos
 FROM curso c
-LEFT JOIN pertenece pe ON pe.id_curso = c.id_curso
+LEFT JOIN pertenece pe ON pe.id_curso = c.id_curso -- el LEFT es para que muestre todos los cursos (tambien los que estan en 0)
 GROUP BY c.id_curso, c.ciclo_lectivo, c.anio, c.division, c.turno
 ORDER BY c.ciclo_lectivo, c.anio, c.division;
 
@@ -42,41 +42,41 @@ ORDER BY co.horario_inicio;
 -- 4. Materias del plan y el profesor que las dicta
 --
 SELECT m.id_materia, m.nombre AS materia, m.anio_plan,
-       CONCAT(p.apellido, ', ', p.nombre) AS profesor, p.email AS email_profesor
+       CONCAT(pr.apellido, ', ', pr.nombre) AS profesor, pr.email AS email_profesor
 FROM materia m
-JOIN persona p ON p.id_persona = m.id_profesor
+JOIN profesor pr ON pr.id_profesor = m.id_profesor
 ORDER BY m.nombre, m.anio_plan;
 
 -- 5. Materias que da cada profesor y en que cursos
 --
 -- Para saber el curso hay que pasar por contiene (materia -> contiene -> curso).
 --
-SELECT p.apellido, p.nombre, m.nombre AS materia, c.ciclo_lectivo, c.anio, c.division
+SELECT pr.apellido, pr.nombre, m.nombre AS materia, c.ciclo_lectivo, c.anio, c.division
 FROM materia m
-JOIN persona p ON p.id_persona = m.id_profesor
+JOIN profesor pr ON pr.id_profesor = m.id_profesor
 JOIN contiene co ON co.id_materia = m.id_materia
 JOIN curso c ON c.id_curso = co.id_curso
-ORDER BY p.apellido, c.ciclo_lectivo, c.anio, c.division;
+ORDER BY pr.apellido, c.ciclo_lectivo, c.anio, c.division;
 
 -- 6. Alumnos que cursan una materia especifica (Ej: id_materia = 1)
 --
 -- La misma materia se da en varios cursos y ciclos, por eso se ordena primero por curso.
 --
 SELECT m.nombre AS materia, c.ciclo_lectivo, c.anio, c.division,
-       CONCAT(p.apellido, ', ', p.nombre) AS alumno, p.dni
+       CONCAT(al.apellido, ', ', al.nombre) AS alumno, al.dni
 FROM contiene co
 JOIN materia m ON m.id_materia = co.id_materia
 JOIN curso c ON c.id_curso = co.id_curso
 JOIN pertenece pe ON pe.id_curso = c.id_curso
-JOIN persona p ON p.id_persona = pe.id_alumno
+JOIN alumno al ON al.id_alumno = pe.id_alumno
 WHERE m.id_materia = 1
-ORDER BY c.ciclo_lectivo, c.anio, c.division, p.apellido, p.nombre;
+ORDER BY c.ciclo_lectivo, c.anio, c.division, al.apellido, al.nombre;
 
 -- 7. Cursos y materias de un alumno especifico (Ej: id_alumno = 5)
 --
-SELECT CONCAT(p.apellido, ', ', p.nombre) AS alumno, c.ciclo_lectivo, c.anio, c.division, m.nombre AS materia
+SELECT CONCAT(al.apellido, ', ', al.nombre) AS alumno, c.ciclo_lectivo, c.anio, c.division, m.nombre AS materia
 FROM pertenece pe
-JOIN persona p ON p.id_persona = pe.id_alumno
+JOIN alumno al ON al.id_alumno = pe.id_alumno
 JOIN curso c ON c.id_curso = pe.id_curso
 JOIN contiene co ON co.id_curso = c.id_curso
 JOIN materia m ON m.id_materia = co.id_materia
@@ -89,12 +89,12 @@ ORDER BY c.ciclo_lectivo, c.anio, m.nombre;
 -- Si falta un parcial, la nota final queda vacia (NULL).
 -- Con anio_plan se distingue Matematica de 1er año de Matematica de 2do.
 --
-SELECT p.apellido, p.nombre, m.nombre AS materia, m.anio_plan, k.parcial_1, k.parcial_2,
-       ROUND((k.parcial_1 + k.parcial_2) / 2, 2) AS nota_final
-FROM calificacion k
-JOIN persona p ON p.id_persona = k.id_alumno
-JOIN materia m ON m.id_materia = k.id_materia
-ORDER BY p.apellido, p.nombre, m.anio_plan, m.nombre;
+SELECT al.apellido, al.nombre, m.nombre AS materia, m.anio_plan, ca.parcial_1, ca.parcial_2,
+       ROUND((ca.parcial_1 + ca.parcial_2) / 2, 2) AS nota_final
+FROM calificacion ca
+JOIN alumno al ON al.id_alumno = ca.id_alumno
+JOIN materia m ON m.id_materia = ca.id_materia
+ORDER BY al.apellido, al.nombre, m.anio_plan, m.nombre;
 
 /*
 PARA CHARLAR: version de la consulta 3 del txt de consultas (dejada comentada, no se ejecuta).
@@ -119,13 +119,13 @@ JOIN MATERIA mat ON cal.id_materia = mat.id_materia;
 -- El que esta peor sale primero.
 -- Si le falta un parcial no sale, porque todavia no tiene nota final.
 --
-SELECT p.apellido, p.nombre, m.nombre AS materia, m.anio_plan,
-       ROUND((k.parcial_1 + k.parcial_2) / 2, 2) AS nota_final
-FROM calificacion k
-JOIN persona p ON p.id_persona = k.id_alumno
-JOIN materia m ON m.id_materia = k.id_materia
-WHERE (k.parcial_1 + k.parcial_2) / 2 < 6
-ORDER BY nota_final, p.apellido, p.nombre;
+SELECT al.apellido, al.nombre, m.nombre AS materia, m.anio_plan,
+       ROUND((ca.parcial_1 + ca.parcial_2) / 2, 2) AS nota_final
+FROM calificacion ca
+JOIN alumno al ON al.id_alumno = ca.id_alumno
+JOIN materia m ON m.id_materia = ca.id_materia
+WHERE (ca.parcial_1 + ca.parcial_2) / 2 < 6
+ORDER BY nota_final, al.apellido, al.nombre;
 
 /*
 PARA CHARLAR: version de la consulta 4 del txt de consultas (dejada comentada, no se ejecuta).
@@ -148,17 +148,17 @@ WHERE (IFNULL(cal.parcial_1, 0) + IFNULL(cal.parcial_2, 0)) / 2 < 6;
 --
 -- Primero se pregunta si falta un parcial: sin los dos parciales no se puede decidir.
 --
-SELECT p.apellido, p.nombre, m.nombre AS materia, m.anio_plan, k.parcial_1, k.parcial_2,
-       ROUND((k.parcial_1 + k.parcial_2) / 2, 2) AS nota_final,
+SELECT al.apellido, al.nombre, m.nombre AS materia, m.anio_plan, ca.parcial_1, ca.parcial_2,
+       ROUND((ca.parcial_1 + ca.parcial_2) / 2, 2) AS nota_final,
        CASE
-           WHEN k.parcial_1 IS NULL OR k.parcial_2 IS NULL THEN 'PENDIENTE'
-           WHEN (k.parcial_1 + k.parcial_2) / 2 >= 6 THEN 'APROBADO'
+           WHEN ca.parcial_1 IS NULL OR ca.parcial_2 IS NULL THEN 'PENDIENTE'
+           WHEN (ca.parcial_1 + ca.parcial_2) / 2 >= 6 THEN 'APROBADO'
            ELSE 'EN RIESGO / DESAPROBADO'
        END AS estado
-FROM calificacion k
-JOIN persona p ON p.id_persona = k.id_alumno
-JOIN materia m ON m.id_materia = k.id_materia
-ORDER BY p.apellido, p.nombre, m.anio_plan, m.nombre;
+FROM calificacion ca
+JOIN alumno al ON al.id_alumno = ca.id_alumno
+JOIN materia m ON m.id_materia = ca.id_materia
+ORDER BY al.apellido, al.nombre, m.anio_plan, m.nombre;
 
 /*
 PARA CHARLAR: version de la consulta 9 del txt de consultas (dejada comentada, no se ejecuta).
@@ -182,17 +182,17 @@ ORDER BY alumno, materia;
 
 -- 11. Alumnos con notas de parcial pendientes de carga
 --
-SELECT p.apellido, p.nombre, m.nombre AS materia, m.anio_plan,
+SELECT al.apellido, al.nombre, m.nombre AS materia, m.anio_plan,
        CASE
-           WHEN k.parcial_1 IS NULL AND k.parcial_2 IS NULL THEN 'Faltan los dos parciales'
-           WHEN k.parcial_1 IS NULL THEN 'Falta 1er parcial'
+           WHEN ca.parcial_1 IS NULL AND ca.parcial_2 IS NULL THEN 'Faltan los dos parciales'
+           WHEN ca.parcial_1 IS NULL THEN 'Falta 1er parcial'
            ELSE 'Falta 2do parcial'
        END AS estado_notas
-FROM calificacion k
-JOIN persona p ON p.id_persona = k.id_alumno
-JOIN materia m ON m.id_materia = k.id_materia
-WHERE k.parcial_1 IS NULL OR k.parcial_2 IS NULL
-ORDER BY m.anio_plan, m.nombre, p.apellido;
+FROM calificacion ca
+JOIN alumno al ON al.id_alumno = ca.id_alumno
+JOIN materia m ON m.id_materia = ca.id_materia
+WHERE ca.parcial_1 IS NULL OR ca.parcial_2 IS NULL
+ORDER BY m.anio_plan, m.nombre, al.apellido;
 
 -- 12. Promedio de notas finales por materia
 --
@@ -200,48 +200,48 @@ ORDER BY m.anio_plan, m.nombre, p.apellido;
 -- Si nadie tiene los dos parciales, el promedio queda NULL.
 --
 SELECT m.nombre AS materia, m.anio_plan,
-       COUNT((k.parcial_1 + k.parcial_2) / 2) AS alumnos_con_nota_final,
-       ROUND(AVG((k.parcial_1 + k.parcial_2) / 2), 2) AS promedio_materia
-FROM calificacion k
-JOIN materia m ON m.id_materia = k.id_materia
+       COUNT((ca.parcial_1 + ca.parcial_2) / 2) AS alumnos_con_nota_final,
+       ROUND(AVG((ca.parcial_1 + ca.parcial_2) / 2), 2) AS promedio_materia
+FROM calificacion ca
+JOIN materia m ON m.id_materia = ca.id_materia
 GROUP BY m.id_materia, m.nombre, m.anio_plan
 ORDER BY m.anio_plan, m.nombre;
 
 -- 13. Porcentaje de asistencia de cada alumno por materia
 --
-SELECT p.apellido, p.nombre, m.nombre AS materia, m.anio_plan,
+SELECT al.apellido, al.nombre, m.nombre AS materia, m.anio_plan,
        COUNT(a.id_asistencia) AS total_clases,
        SUM(a.presente) AS total_presentes,
        ROUND(SUM(a.presente) * 100 / COUNT(a.id_asistencia), 2) AS porcentaje_asistencia
 FROM asiste a
-JOIN persona p ON p.id_persona = a.id_alumno
+JOIN alumno al ON al.id_alumno = a.id_alumno
 JOIN materia m ON m.id_materia = a.id_materia
-GROUP BY p.id_persona, p.apellido, p.nombre, m.id_materia, m.nombre, m.anio_plan
-ORDER BY p.apellido, p.nombre, m.anio_plan, m.nombre;
+GROUP BY al.id_alumno, al.apellido, al.nombre, m.id_materia, m.nombre, m.anio_plan
+ORDER BY al.apellido, al.nombre, m.anio_plan, m.nombre;
 
 -- 14. Porcentaje de asistencia general de cada alumno
 --
 -- presente vale 1 o 0, asi que el promedio por 100 da el porcentaje.
 -- El que tiene menos asistencia sale primero.
 --
-SELECT p.apellido, p.nombre, ROUND(AVG(a.presente) * 100, 2) AS porcentaje_asistencia
+SELECT al.apellido, al.nombre, ROUND(AVG(a.presente) * 100, 2) AS porcentaje_asistencia
 FROM asiste a
-JOIN persona p ON p.id_persona = a.id_alumno
-GROUP BY p.id_persona, p.apellido, p.nombre
-ORDER BY porcentaje_asistencia, p.apellido, p.nombre;
+JOIN alumno al ON al.id_alumno = a.id_alumno
+GROUP BY al.id_alumno, al.apellido, al.nombre
+ORDER BY porcentaje_asistencia, al.apellido, al.nombre;
 
 -- 15. Alumnos con ausencias y total de faltas por materia
 --
 -- HAVING filtra despues de agrupar: se queda solo con los que tienen alguna falta.
 --
-SELECT p.apellido, p.nombre, m.nombre AS materia, m.anio_plan,
+SELECT al.apellido, al.nombre, m.nombre AS materia, m.anio_plan,
        SUM(CASE WHEN a.presente = 0 THEN 1 ELSE 0 END) AS total_faltas
 FROM asiste a
-JOIN persona p ON p.id_persona = a.id_alumno
+JOIN alumno al ON al.id_alumno = a.id_alumno
 JOIN materia m ON m.id_materia = a.id_materia
-GROUP BY p.id_persona, p.apellido, p.nombre, m.id_materia, m.nombre, m.anio_plan
+GROUP BY al.id_alumno, al.apellido, al.nombre, m.id_materia, m.nombre, m.anio_plan
 HAVING total_faltas > 0
-ORDER BY total_faltas DESC, p.apellido, p.nombre;
+ORDER BY total_faltas DESC, al.apellido, al.nombre;
 
 -- 16. Materias sin ninguna asistencia cargada
 --

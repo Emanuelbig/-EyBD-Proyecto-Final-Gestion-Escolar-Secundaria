@@ -212,6 +212,41 @@ ALTER TABLE profesor
 -- Indice para buscar asistencias por fecha mas rapido
 ALTER TABLE asiste
     ADD KEY idx_asiste_fecha (fecha);
-    
--- Aca podriamos poner un trigger para que no se pueda cargar un profesor o un alumno con fecha de nacimiento futura
--- y otro que no deje cargarle una nota a un alumno en una materia que no es de su curso.
+
+-- TRIGGERS
+-- Un trigger es un control que MySQL hace solo antes de cargar un dato.
+-- Si algo esta mal, frena la carga con un error.
+
+DELIMITER //
+
+-- No se puede cargar un alumno con fecha de nacimiento futura
+-- (un CHECK no puede usar la fecha de hoy, por eso va con trigger)
+CREATE TRIGGER tr_alumno_fecha_nacimiento
+BEFORE INSERT ON alumno
+FOR EACH ROW
+BEGIN
+    IF NEW.fecha_nacimiento > CURDATE() THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'La fecha de nacimiento no puede ser futura';
+    END IF;
+END //
+
+-- No se puede cargar una nota de un alumno en una materia que no es de ninguno de sus cursos
+-- (se fija en contiene que cursos tienen esa materia y en pertenece si el alumno esta en alguno)
+CREATE TRIGGER tr_calificacion_curso
+BEFORE INSERT ON calificacion
+FOR EACH ROW
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM contiene co
+        JOIN pertenece pe ON pe.id_curso = co.id_curso
+        WHERE co.id_materia = NEW.id_materia
+          AND pe.id_alumno = NEW.id_alumno
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'El alumno no cursa esa materia';
+    END IF;
+END //
+
+DELIMITER ;
