@@ -28,4 +28,4 @@ También se puede hacer por partes, en este orden:
 
 Los datos cargados son inventados.
 
-Usamos MySQL 8.0.46.
+Usamos MySQL 26.7.0.
