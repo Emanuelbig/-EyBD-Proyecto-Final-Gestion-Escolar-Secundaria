@@ -252,3 +252,34 @@ SELECT m.id_materia, m.nombre AS materia, m.anio_plan
 FROM materia m
 WHERE m.id_materia NOT IN (SELECT a.id_materia FROM asiste a)
 ORDER BY m.anio_plan, m.nombre;
+
+-- 17. Trayectoria: en que curso estuvo cada alumno en 2025 y en cual esta en 2026
+--
+-- Se usa pertenece y curso dos veces (una por cada ciclo), es un self join.
+-- Solo salen los que estuvieron en los dos ciclos.
+--
+SELECT al.apellido, al.nombre,
+       CONCAT(c25.anio, '° ', c25.division) AS curso_2025,
+       CONCAT(c26.anio, '° ', c26.division) AS curso_2026
+FROM alumno al
+JOIN pertenece p25 ON p25.id_alumno = al.id_alumno
+JOIN curso c25 ON c25.id_curso = p25.id_curso AND c25.ciclo_lectivo = 2025
+JOIN pertenece p26 ON p26.id_alumno = al.id_alumno
+JOIN curso c26 ON c26.id_curso = p26.id_curso AND c26.ciclo_lectivo = 2026
+ORDER BY c26.anio, c26.division, al.apellido, al.nombre;
+
+-- 18. Alumnos que estaban en 2025 y no siguen en 2026
+--
+-- Si estaban en 6to egresaron; si no, dejaron la escuela.
+--
+SELECT al.legajo, al.apellido, al.nombre, c.anio, c.division,
+       CASE WHEN c.anio = 6 THEN 'EGRESADO' ELSE 'DEJO LA ESCUELA' END AS situacion
+FROM alumno al
+JOIN pertenece pe ON pe.id_alumno = al.id_alumno
+JOIN curso c ON c.id_curso = pe.id_curso
+WHERE c.ciclo_lectivo = 2025
+  AND al.id_alumno NOT IN (SELECT pe2.id_alumno
+                           FROM pertenece pe2
+                           JOIN curso c2 ON c2.id_curso = pe2.id_curso
+                           WHERE c2.ciclo_lectivo = 2026)
+ORDER BY c.anio, c.division, al.apellido;

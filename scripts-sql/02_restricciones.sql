@@ -231,10 +231,40 @@ BEGIN
     END IF;
 END //
 
+-- No se puede cargar un profesor con fecha de nacimiento futura
+-- (es el mismo control que en alumno)
+CREATE TRIGGER tr_profesor_fecha_nacimiento
+BEFORE INSERT ON profesor
+FOR EACH ROW
+BEGIN
+    IF NEW.fecha_nacimiento > CURDATE() THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'La fecha de nacimiento no puede ser futura';
+    END IF;
+END //
+
 -- No se puede cargar una nota de un alumno en una materia que no es de ninguno de sus cursos
 -- (se fija en contiene que cursos tienen esa materia y en pertenece si el alumno esta en alguno)
 CREATE TRIGGER tr_calificacion_curso
 BEFORE INSERT ON calificacion
+FOR EACH ROW
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM contiene co
+        JOIN pertenece pe ON pe.id_curso = co.id_curso
+        WHERE co.id_materia = NEW.id_materia
+          AND pe.id_alumno = NEW.id_alumno
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'El alumno no cursa esa materia';
+    END IF;
+END //
+
+-- No se puede tomar asistencia a un alumno en una materia que no es de ninguno de sus cursos
+-- (es el mismo control que hacemos con las notas)
+CREATE TRIGGER tr_asiste_curso
+BEFORE INSERT ON asiste
 FOR EACH ROW
 BEGIN
     IF NOT EXISTS (
