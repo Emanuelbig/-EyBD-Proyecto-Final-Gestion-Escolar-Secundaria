@@ -283,3 +283,118 @@ WHERE c.ciclo_lectivo = 2025
                            JOIN curso c2 ON c2.id_curso = pe2.id_curso
                            WHERE c2.ciclo_lectivo = 2026)
 ORDER BY c.anio, c.division, al.apellido;
+
+-- 19. Edad de cada alumno de un curso (Ej: 3ro A del 2026)
+--
+-- TIMESTAMPDIFF con YEAR cuenta los años completos entre la fecha de nacimiento y hoy.
+-- Si todavia no cumplio en el año, no le suma ese año.
+--
+SELECT al.apellido, al.nombre,
+       DATE_FORMAT(al.fecha_nacimiento, '%d/%m/%Y') AS fecha_nacimiento,
+       TIMESTAMPDIFF(YEAR, al.fecha_nacimiento, CURDATE()) AS edad
+FROM alumno al
+JOIN pertenece pe ON pe.id_alumno = al.id_alumno
+JOIN curso c ON c.id_curso = pe.id_curso
+WHERE c.ciclo_lectivo = 2026 AND c.anio = 3 AND c.division = 'A'
+ORDER BY al.fecha_nacimiento;
+
+-- 20. Edad promedio, minima y maxima por curso del 2026
+--
+-- La edad se calcula igual que en la 19 y despues se agrupa por curso.
+--
+SELECT c.anio, c.division, c.turno, COUNT(*) AS alumnos,
+       ROUND(AVG(TIMESTAMPDIFF(YEAR, al.fecha_nacimiento, CURDATE())), 1) AS edad_promedio,
+       MIN(TIMESTAMPDIFF(YEAR, al.fecha_nacimiento, CURDATE())) AS edad_minima,
+       MAX(TIMESTAMPDIFF(YEAR, al.fecha_nacimiento, CURDATE())) AS edad_maxima
+FROM alumno al
+JOIN pertenece pe ON pe.id_alumno = al.id_alumno
+JOIN curso c ON c.id_curso = pe.id_curso
+WHERE c.ciclo_lectivo = 2026
+GROUP BY c.id_curso, c.anio, c.division, c.turno
+ORDER BY c.anio, c.division;
+
+-- 21. Alumnos del 2026 que cumplen años este mes
+--
+-- MONTH saca el mes de la fecha. Se compara con el mes de hoy.
+-- Se ordena por DAY para que salgan en el orden en que cumplen.
+--
+SELECT al.apellido, al.nombre, CONCAT(c.anio, '° ', c.division) AS curso,
+       DATE_FORMAT(al.fecha_nacimiento, '%d/%m') AS cumple,
+       YEAR(CURDATE()) - YEAR(al.fecha_nacimiento) AS cumple_anios
+FROM alumno al
+JOIN pertenece pe ON pe.id_alumno = al.id_alumno
+JOIN curso c ON c.id_curso = pe.id_curso
+WHERE c.ciclo_lectivo = 2026
+  AND MONTH(al.fecha_nacimiento) = MONTH(CURDATE())
+ORDER BY DAY(al.fecha_nacimiento), al.apellido;
+
+-- 22. Porcentaje de asistencia por mes
+--
+-- DATE_FORMAT con '%Y-%m' deja solo el año y el mes, asi se agrupan todas las clases del mismo mes.
+--
+SELECT DATE_FORMAT(a.fecha, '%Y-%m') AS mes,
+       COUNT(*) AS registros,
+       SUM(a.presente = 0) AS faltas,
+       ROUND(AVG(a.presente) * 100, 2) AS porcentaje_asistencia
+FROM asiste a
+GROUP BY mes
+ORDER BY mes;
+
+-- 23. Faltas por dia de la semana
+--
+-- lc_time_names cambia el idioma de DAYNAME para que salga "lunes" y no "Monday".
+-- Se ordena por WEEKDAY (0 = lunes) para que los dias salgan en orden y no alfabetico.
+--
+SET lc_time_names = 'es_AR';
+
+SELECT DAYNAME(a.fecha) AS dia,
+       COUNT(*) AS registros,
+       SUM(a.presente = 0) AS faltas,
+       ROUND(SUM(a.presente = 0) * 100 / COUNT(*), 2) AS porcentaje_faltas
+FROM asiste a
+GROUP BY dia, WEEKDAY(a.fecha)
+ORDER BY WEEKDAY(a.fecha);
+
+-- 24. Alumnos con 2 faltas o mas en octubre de 2026
+--
+-- BETWEEN incluye las dos puntas: del 1 al 31 de octubre.
+--
+SELECT al.apellido, al.nombre, COUNT(*) AS faltas_octubre,
+       GROUP_CONCAT(DATE_FORMAT(a.fecha, '%d/%m') ORDER BY a.fecha SEPARATOR ', ') AS dias
+FROM asiste a
+JOIN alumno al ON al.id_alumno = a.id_alumno
+WHERE a.presente = 0
+  AND a.fecha BETWEEN '2026-10-01' AND '2026-10-31'
+GROUP BY al.id_alumno, al.apellido, al.nombre
+HAVING faltas_octubre >= 2
+ORDER BY faltas_octubre DESC, al.apellido;
+
+-- 25. Ultima falta de cada alumno en el 2026 y cuantos dias pasaron
+--
+-- YEAR deja solo las faltas del 2026. MAX sobre una fecha devuelve la mas reciente.
+-- DATEDIFF da la diferencia en dias entre hoy y esa fecha.
+--
+SELECT al.apellido, al.nombre,
+       MAX(a.fecha) AS ultima_falta,
+       DATEDIFF(CURDATE(), MAX(a.fecha)) AS dias_desde_la_falta
+FROM asiste a
+JOIN alumno al ON al.id_alumno = a.id_alumno
+WHERE a.presente = 0
+  AND YEAR(a.fecha) = 2026
+GROUP BY al.id_alumno, al.apellido, al.nombre
+ORDER BY ultima_falta DESC, al.apellido;
+
+-- 26. Horario de cada materia de un curso con la hora de fin (Ej: 3ro A del 2026)
+--
+-- duracion esta en minutos. SEC_TO_TIME pasa los segundos a formato hora
+-- y ADDTIME se la suma a la hora de inicio.
+--
+SELECT m.nombre AS materia,
+       TIME_FORMAT(co.horario_inicio, '%H:%i') AS inicio,
+       TIME_FORMAT(ADDTIME(co.horario_inicio, SEC_TO_TIME(co.duracion * 60)), '%H:%i') AS fin,
+       co.duracion AS minutos
+FROM contiene co
+JOIN materia m ON m.id_materia = co.id_materia
+JOIN curso c ON c.id_curso = co.id_curso
+WHERE c.ciclo_lectivo = 2026 AND c.anio = 3 AND c.division = 'A'
+ORDER BY co.horario_inicio;
