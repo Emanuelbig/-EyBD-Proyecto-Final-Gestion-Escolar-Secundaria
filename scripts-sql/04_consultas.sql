@@ -288,10 +288,11 @@ ORDER BY c.anio, c.division, al.apellido;
 --
 -- TIMESTAMPDIFF con YEAR cuenta los años completos entre la fecha de nacimiento y hoy.
 -- Si todavia no cumplio en el año, no le suma ese año.
+-- Ejemplo: nacio el 10/12/2011 y hoy es 17/11/2026, da 14 y no 15 porque todavia no cumplio.
 --
 SELECT al.apellido, al.nombre,
-       DATE_FORMAT(al.fecha_nacimiento, '%d/%m/%Y') AS fecha_nacimiento,
-       TIMESTAMPDIFF(YEAR, al.fecha_nacimiento, CURDATE()) AS edad
+       DATE_FORMAT(al.fecha_nacimiento, '%d/%m/%Y') AS fecha_nacimiento, -- muestra la fecha como dia/mes/año (%d dia, %m mes, %Y año con 4 cifras)
+       TIMESTAMPDIFF(YEAR, al.fecha_nacimiento, CURDATE()) AS edad -- CURDATE() es la fecha de hoy, por eso la edad cambia segun el dia en que se corre
 FROM alumno al
 JOIN pertenece pe ON pe.id_alumno = al.id_alumno
 JOIN curso c ON c.id_curso = pe.id_curso
@@ -301,16 +302,18 @@ ORDER BY al.fecha_nacimiento;
 -- 20. Edad promedio, minima y maxima por curso del 2026
 --
 -- La edad se calcula igual que en la 19 y despues se agrupa por curso.
+-- Se lee de adentro para afuera: primero TIMESTAMPDIFF saca la edad de cada alumno,
+-- despues AVG, MIN y MAX la resumen para todo el curso.
 --
-SELECT c.anio, c.division, c.turno, COUNT(*) AS alumnos,
-       ROUND(AVG(TIMESTAMPDIFF(YEAR, al.fecha_nacimiento, CURDATE())), 1) AS edad_promedio,
-       MIN(TIMESTAMPDIFF(YEAR, al.fecha_nacimiento, CURDATE())) AS edad_minima,
-       MAX(TIMESTAMPDIFF(YEAR, al.fecha_nacimiento, CURDATE())) AS edad_maxima
+SELECT c.anio, c.division, c.turno, COUNT(*) AS alumnos, -- COUNT(*) cuenta los alumnos de cada curso
+       ROUND(AVG(TIMESTAMPDIFF(YEAR, al.fecha_nacimiento, CURDATE())), 1) AS edad_promedio, -- ROUND(..., 1) deja un solo decimal
+       MIN(TIMESTAMPDIFF(YEAR, al.fecha_nacimiento, CURDATE())) AS edad_minima, -- el alumno mas chico del curso
+       MAX(TIMESTAMPDIFF(YEAR, al.fecha_nacimiento, CURDATE())) AS edad_maxima -- el alumno mas grande del curso
 FROM alumno al
 JOIN pertenece pe ON pe.id_alumno = al.id_alumno
 JOIN curso c ON c.id_curso = pe.id_curso
 WHERE c.ciclo_lectivo = 2026
-GROUP BY c.id_curso, c.anio, c.division, c.turno
+GROUP BY c.id_curso, c.anio, c.division, c.turno -- una fila por curso. Van todas las columnas del SELECT que no estan en AVG, MIN o MAX
 ORDER BY c.anio, c.division;
 
 -- 21. Alumnos del 2026 que cumplen años este mes
@@ -318,56 +321,52 @@ ORDER BY c.anio, c.division;
 -- MONTH saca el mes de la fecha. Se compara con el mes de hoy.
 -- Se ordena por DAY para que salgan en el orden en que cumplen.
 --
-SELECT al.apellido, al.nombre, CONCAT(c.anio, '° ', c.division) AS curso,
-       DATE_FORMAT(al.fecha_nacimiento, '%d/%m') AS cumple,
-       YEAR(CURDATE()) - YEAR(al.fecha_nacimiento) AS cumple_anios
+SELECT al.apellido, al.nombre, CONCAT(c.anio, '° ', c.division) AS curso, -- CONCAT junta año y division en un solo texto, por ejemplo "3° A"
+       DATE_FORMAT(al.fecha_nacimiento, '%d/%m') AS cumple, -- solo dia y mes, sin el año
+       YEAR(CURDATE()) - YEAR(al.fecha_nacimiento) AS cumple_anios -- resta los años: da los años que cumple este año, no la edad de hoy
 FROM alumno al
 JOIN pertenece pe ON pe.id_alumno = al.id_alumno
 JOIN curso c ON c.id_curso = pe.id_curso
 WHERE c.ciclo_lectivo = 2026
-  AND MONTH(al.fecha_nacimiento) = MONTH(CURDATE())
-ORDER BY DAY(al.fecha_nacimiento), al.apellido;
+  AND MONTH(al.fecha_nacimiento) = MONTH(CURDATE()) -- MONTH devuelve el numero del mes (11 = noviembre). Si se corre en otro mes salen otros alumnos
+ORDER BY DAY(al.fecha_nacimiento), al.apellido; -- DAY devuelve el numero del dia
 
 -- 22. Porcentaje de asistencia por mes
 --
 -- DATE_FORMAT con '%Y-%m' deja solo el año y el mes, asi se agrupan todas las clases del mismo mes.
 --
-SELECT DATE_FORMAT(a.fecha, '%Y-%m') AS mes,
-       COUNT(*) AS registros,
-       SUM(a.presente = 0) AS faltas,
-       ROUND(AVG(a.presente) * 100, 2) AS porcentaje_asistencia
+SELECT DATE_FORMAT(a.fecha, '%Y-%m') AS mes, -- 2026-10-05 queda como 2026-10
+       COUNT(*) AS registros, -- cuantas asistencias se tomaron ese mes (presentes y ausentes)
+       SUM(a.presente = 0) AS faltas, -- a.presente = 0 da 1 si falto y 0 si vino. Al sumarlos quedan las faltas
+       ROUND(AVG(a.presente) * 100, 2) AS porcentaje_asistencia -- presente vale 1 o 0, el promedio por 100 da el porcentaje (igual que en la 14)
 FROM asiste a
-GROUP BY mes
+GROUP BY mes -- se puede agrupar por el alias "mes" que se puso en el SELECT
 ORDER BY mes;
 
--- 23. Faltas por dia de la semana
+-- 23. Alumnos que faltaron un dia especifico (Ej: 5 de octubre de 2026)
 --
--- lc_time_names cambia el idioma de DAYNAME para que salga "lunes" y no "Monday".
--- Se ordena por WEEKDAY (0 = lunes) para que los dias salgan en orden y no alfabetico.
+-- La fecha va entre comillas con el formato año-mes-dia, que es como la guarda MySQL.
 --
-SET lc_time_names = 'es_AR';
-
-SELECT DAYNAME(a.fecha) AS dia,
-       COUNT(*) AS registros,
-       SUM(a.presente = 0) AS faltas,
-       ROUND(SUM(a.presente = 0) * 100 / COUNT(*), 2) AS porcentaje_faltas
+SELECT al.apellido, al.nombre, m.nombre AS materia
 FROM asiste a
-GROUP BY dia, WEEKDAY(a.fecha)
-ORDER BY WEEKDAY(a.fecha);
+JOIN alumno al ON al.id_alumno = a.id_alumno
+JOIN materia m ON m.id_materia = a.id_materia
+WHERE a.fecha = '2026-10-05' AND a.presente = 0
+ORDER BY al.apellido, al.nombre;
 
 -- 24. Alumnos con 2 faltas o mas en octubre de 2026
 --
 -- BETWEEN incluye las dos puntas: del 1 al 31 de octubre.
+-- HAVING se queda con los que tienen 2 faltas o mas, como en la 15.
 --
-SELECT al.apellido, al.nombre, COUNT(*) AS faltas_octubre,
-       GROUP_CONCAT(DATE_FORMAT(a.fecha, '%d/%m') ORDER BY a.fecha SEPARATOR ', ') AS dias
+SELECT al.apellido, al.nombre, COUNT(*) AS faltas_octubre
 FROM asiste a
 JOIN alumno al ON al.id_alumno = a.id_alumno
 WHERE a.presente = 0
   AND a.fecha BETWEEN '2026-10-01' AND '2026-10-31'
-GROUP BY al.id_alumno, al.apellido, al.nombre
-HAVING faltas_octubre >= 2
-ORDER BY faltas_octubre DESC, al.apellido;
+GROUP BY al.id_alumno, al.apellido, al.nombre -- se agrupa por id porque puede haber dos alumnos con el mismo nombre
+HAVING faltas_octubre >= 2 -- WHERE filtra filas antes de agrupar y HAVING filtra despues, sobre el COUNT
+ORDER BY faltas_octubre DESC, al.apellido; -- DESC: de mayor a menor
 
 -- 25. Ultima falta de cada alumno en el 2026 y cuantos dias pasaron
 --
@@ -375,26 +374,20 @@ ORDER BY faltas_octubre DESC, al.apellido;
 -- DATEDIFF da la diferencia en dias entre hoy y esa fecha.
 --
 SELECT al.apellido, al.nombre,
-       MAX(a.fecha) AS ultima_falta,
-       DATEDIFF(CURDATE(), MAX(a.fecha)) AS dias_desde_la_falta
+       MAX(a.fecha) AS ultima_falta, -- con fechas, MAX devuelve la mas nueva (y MIN la mas vieja)
+       DATEDIFF(CURDATE(), MAX(a.fecha)) AS dias_desde_la_falta -- DATEDIFF(fecha1, fecha2) resta fecha1 - fecha2 en dias. Va hoy primero para que de positivo
 FROM asiste a
 JOIN alumno al ON al.id_alumno = a.id_alumno
-WHERE a.presente = 0
-  AND YEAR(a.fecha) = 2026
-GROUP BY al.id_alumno, al.apellido, al.nombre
+WHERE a.presente = 0 -- solo las faltas
+  AND YEAR(a.fecha) = 2026 -- YEAR saca el año de la fecha
+GROUP BY al.id_alumno, al.apellido, al.nombre -- una fila por alumno, asi MAX busca la ultima falta de cada uno
 ORDER BY ultima_falta DESC, al.apellido;
 
--- 26. Horario de cada materia de un curso con la hora de fin (Ej: 3ro A del 2026)
+-- 26. Profesores nacidos antes de 1985
 --
--- duracion esta en minutos. SEC_TO_TIME pasa los segundos a formato hora
--- y ADDTIME se la suma a la hora de inicio.
+-- Las fechas se comparan con < y > igual que los numeros: una fecha anterior es "menor".
 --
-SELECT m.nombre AS materia,
-       TIME_FORMAT(co.horario_inicio, '%H:%i') AS inicio,
-       TIME_FORMAT(ADDTIME(co.horario_inicio, SEC_TO_TIME(co.duracion * 60)), '%H:%i') AS fin,
-       co.duracion AS minutos
-FROM contiene co
-JOIN materia m ON m.id_materia = co.id_materia
-JOIN curso c ON c.id_curso = co.id_curso
-WHERE c.ciclo_lectivo = 2026 AND c.anio = 3 AND c.division = 'A'
-ORDER BY co.horario_inicio;
+SELECT pr.apellido, pr.nombre, pr.fecha_nacimiento
+FROM profesor pr
+WHERE pr.fecha_nacimiento < '1985-01-01'
+ORDER BY pr.fecha_nacimiento;
