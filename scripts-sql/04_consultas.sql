@@ -96,24 +96,6 @@ JOIN alumno al ON al.id_alumno = ca.id_alumno
 JOIN materia m ON m.id_materia = ca.id_materia
 ORDER BY al.apellido, al.nombre, m.anio_plan, m.nombre;
 
-/*
-PARA CHARLAR: version de la consulta 3 del txt de consultas (dejada comentada, no se ejecuta).
-Por que esta mal: IFNULL(parcial, 0) cuenta como 0 un parcial que todavia no se rindio.
-Ejemplo: Gimenez Sofia en Historia tiene 8.50 y el 2do parcial sin rendir: aca le da nota final 4.25.
-Lo correcto segun el diccionario de datos es que la nota final quede NULL hasta tener los dos parciales.
-Afecta a 7 de las 69 filas. Ademas no tiene ORDER BY y no muestra anio_plan (hay dos "Matematica").
-
-SELECT 
-    CONCAT(p.apellido, ', ', p.nombre) AS alumno,
-    mat.nombre AS materia,
-    cal.parcial_1, cal.parcial_2,
-    ROUND((IFNULL(cal.parcial_1, 0) + IFNULL(cal.parcial_2, 0)) / 2, 2) AS nota_final
-FROM CALIFICACION cal
-JOIN ALUMNO a ON cal.id_alumno = a.id_persona
-JOIN PERSONA p ON a.id_persona = p.id_persona
-JOIN MATERIA mat ON cal.id_materia = mat.id_materia;
-*/
-
 -- 9. Alumnos en riesgo de desaprobar (nota final menor a 6)
 --
 -- El que esta peor sale primero.
@@ -126,23 +108,6 @@ JOIN alumno al ON al.id_alumno = ca.id_alumno
 JOIN materia m ON m.id_materia = ca.id_materia
 WHERE (ca.parcial_1 + ca.parcial_2) / 2 < 6
 ORDER BY nota_final, al.apellido, al.nombre;
-
-/*
-PARA CHARLAR: version de la consulta 4 del txt de consultas (dejada comentada, no se ejecuta).
-Por que esta mal: por el mismo IFNULL, un alumno sin el 2do parcial sale siempre en riesgo si su 1er parcial es menor a 12,
-o sea, siempre, porque la nota maxima es 10. Devuelve 30 filas en vez de 23.
-Las 7 de mas son alumnos sin nota final todavia (ejemplo: Gimenez Sofia con un 8.50, Castro Lucia con un 8.50).
-
-SELECT 
-    CONCAT(p.apellido, ', ', p.nombre) AS alumno,
-    mat.nombre AS materia,
-    ROUND((IFNULL(cal.parcial_1, 0) + IFNULL(cal.parcial_2, 0)) / 2, 2) AS nota_final
-FROM CALIFICACION cal
-JOIN ALUMNO a ON cal.id_alumno = a.id_persona
-JOIN PERSONA p ON a.id_persona = p.id_persona
-JOIN MATERIA mat ON cal.id_materia = mat.id_materia
-WHERE (IFNULL(cal.parcial_1, 0) + IFNULL(cal.parcial_2, 0)) / 2 < 6;
-*/
 
 -- 10. Estado academico de cada alumno en cada materia
 --
@@ -159,26 +124,6 @@ FROM calificacion ca
 JOIN alumno al ON al.id_alumno = ca.id_alumno
 JOIN materia m ON m.id_materia = ca.id_materia
 ORDER BY al.apellido, al.nombre, m.anio_plan, m.nombre;
-
-/*
-PARA CHARLAR: version de la consulta 9 del txt de consultas (dejada comentada, no se ejecuta).
-La idea del CASE es buena y por eso se conservo, pero por el mismo IFNULL marca "EN RIESGO / DESAPROBADO"
-a los 7 alumnos a los que les falta el 2do parcial. En la version de arriba esos 7 salen como PENDIENTE.
-
-SELECT 
-    CONCAT(p.apellido, ', ', p.nombre) AS alumno,
-    mat.nombre AS materia, cal.parcial_1, cal.parcial_2,
-    ROUND((IFNULL(cal.parcial_1, 0) + IFNULL(cal.parcial_2, 0)) / 2, 2) AS promedio,
-    CASE 
-        WHEN (IFNULL(cal.parcial_1, 0) + IFNULL(cal.parcial_2, 0)) / 2 >= 6 THEN 'APROBADO'
-        ELSE 'EN RIESGO / DESAPROBADO'
-    END AS estado
-FROM CALIFICACION cal
-JOIN ALUMNO a ON cal.id_alumno = a.id_persona
-JOIN PERSONA p ON a.id_persona = p.id_persona
-JOIN MATERIA mat ON cal.id_materia = mat.id_materia
-ORDER BY alumno, materia;
-*/
 
 -- 11. Alumnos con notas de parcial pendientes de carga
 --
